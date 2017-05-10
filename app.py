@@ -29,8 +29,11 @@ scope = [
     'manage_jobs',
 ]
 
-
 @app.route('/')
+def home():
+    return render_template('home.html')
+
+@app.route('/login')
 def login():
     servicem8 = OAuth2Session(client_id, scope=scope, redirect_uri=redirect_uri)
     authorication_url, state = servicem8.authorization_url(authorization_base_url, access_type='offline', approval_prompt='force')
@@ -44,26 +47,11 @@ def callback():
     token = servicem8.fetch_token(token_url, client_secret=client_secret, authorization_response=request.url)
     session['oauth_token'] = token
     print(token)
-    return redirect(url_for('.menu'))
+    return redirect(url_for('.success'))
 
-@app.route("/menu", methods=["GET"])
-def menu():
-    """"""
-    return """
-    <h1>Congratulations, you have obtained an OAuth 2 token!</h1>
-    <h2>What would you like to do next?</h2>
-    <ul>
-        <li><a href="/profile"> Get account profile</a></li>
-        <li><a href="/automatic_refresh"> Implicitly refresh the token</a></li>
-        <li><a href="/manual_refresh"> Explicitly refresh the token</a></li>
-        <li><a href="/validate"> Validate the token</a></li>
-        <li><a href="/upload"> Upload</a></li>
-    </ul>
-
-    <pre>
-    %s
-    </pre>
-    """ % pformat(session['oauth_token'], indent=4)
+@app.route("/success", methods=["GET"])
+def success():
+    return render_template('success.html', token=session['oauth_token'])
 
 @app.route("/profile", methods=["GET"])
 def profile():
@@ -110,9 +98,10 @@ def upload_file():
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     print(row['company_uuid'], row['status'], row['job_description'])
-                    #servicem8 = OAuth2Session(client_id, token=session['oauth_token'])
-                    #servicem8.post('https://api.servicem8.com/api_1.0/job.json', data={"company_uuid":row['company_uuid'], "status":row['status'], "job_description":row['job_description']})
-            return redirect(url_for('uploaded_file',filename=filename))
+                    servicem8 = OAuth2Session(client_id, token=session['oauth_token'])
+                    servicem8.post('https://api.servicem8.com/api_1.0/job.json', data={"status":row['job_status'], "job_description":row['job_description'], "job_address":row['job_address'], "billing_address":row['billing_address']})
+            #return redirect(url_for('uploaded_file',filename=filename))
+            return render_template('file_upload_success.html', filename=filename)
     return render_template('upload.html')
 
 @app.route('/uploads/<filename>')
